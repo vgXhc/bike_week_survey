@@ -1,0 +1,4 @@
+- source: Survey_results.qmd
+  quarto-pub:
+    - id: 42226ae9-8815-49c2-93f9-60f80c652f06
+      url: 'https://haraldkliems.quarto.pub/madison-bike-week-2024-survey-results'

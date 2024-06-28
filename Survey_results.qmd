@@ -1,0 +1,352 @@
+---
+title: "Madison Bike Week 2024 survey results"
+format: html
+execute:
+  echo: false
+  warning: false
+  error: false
+---
+
+
+
+After Madison Bike Week 2024, we asked attendees, sponsors[^1], and event organizers to complete a brief survey. Here are the results. 
+
+[^1]: We currently don't have responses from sponsors yet. Mark will reach out to them separately and the report will be updated once we have those numbers.
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(gt)
+library(tidytext)
+```
+
+
+```{r}
+googlesheets4::gs4_deauth()
+gs4_auth()
+responses <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1dtP5qjIZRCWDfmUi5vkD2KSG-Y3tSq9SRVTYws-Tq78/edit?gid=124399125#gid=124399125")
+
+
+
+colnames(responses) <- c("timestamp",
+                         "overall_impression",
+                         "logo",
+                         "respondent_type",
+                         "awareness_mb",
+                         "previous_participation",
+                         "events_attended",
+                         "bike_more_during",
+                         "business_aware",
+                         "bike_more_future",
+                         "support_business",
+                         "awareness_sponsors",
+                         "connect_w_others",
+                         "acquisition_channel",
+                         "favorite_event",
+                         "favorite_experience",
+                         "permission_to_share",
+                         "improvement_suggestion",
+                         "sponsor_satisfaction",
+                         "sponsor_previous",
+                         "sponsor_meet_expectations",
+                         "sponsor_suggestion",
+                         "sponsor_visibility",
+                         "sponsor_comms",
+                         "sponsor_recommend",
+                         "sponsor_most_valued_experience",
+                         "sponsor_improvement_suggestion",
+                         "sponsor_future",
+                         "sponsor_name",
+                         "event_org_type",
+                         "event_org_previous",
+                         "event_org_satisfaction",
+                         "event_org_attendance",
+                         "event_org_grant_aware",
+                         "event_org_grant_not_apply",
+                         "event_org_sign_up",
+                         "event_org_pre_event_comms",
+                         "event_org_promotion",
+                         "event_org_media_coverage",
+                         "event_org_attendance_satisfaction",
+                         "event_org_fave",
+                         "event_org_improve",
+                         "event_org_future",
+                         "event_org_name",
+                         "event_org_event_name"
+                         )
+
+responses <- responses |> 
+   mutate(
+    overall_impression = factor(overall_impression, levels = c("Excellent", "Very Good", "Fair", "Poor", "Very Poor")),
+    overall_impression =   as.integer(fct_recode(overall_impression,
+                                        "1" = "Excellent",
+                                        "2" = "Very Good",
+                                        "3" = "Fair",
+                                        "4" = "Poor",
+                                        "5" = "Very Poor")),
+    events_attended = factor(events_attended, levels = c("One event/discounts",
+                                                         "2-5 events/discounts",
+                                                         "6-10 events/discounts",
+                                                         "More than 10 events/discounts")),
+    events_attended = fct_recode(events_attended,
+                                 "1" = "One event/discounts",
+                                 "2-5" = "2-5 events/discounts",
+                                 "6-10" = "6-10 events/discounts",
+                                 "11+" = "More than 10 events/discounts"),
+      respondent_type = case_match(respondent_type, "I attended one or multiple Madison Bike Week events." ~ "Attendee",
+                                      "I/my business/organization hosted an event or provided a discount." ~ "Event Organizer"))
+```
+
+We didn't get a ton of responses from attendees and the survey results should be treated with caution.  Here are the numbers of responses by respondent type:
+
+```{r}
+responses |> 
+  group_by(respondent_type) |> 
+  tally() |> 
+  gt() |> 
+  cols_label(respondent_type = "Type of respondent")
+```
+
+We asked all types of respondents about their overall satisfaction with Bike Week and what they thought of the logo.
+
+Overall satisfaction with Bike Week was very high. The response scale goes from Excellent (1) to Very Poor (5), and these are the averages:
+```{r}
+responses |> 
+  group_by(respondent_type) |> 
+  summarise(average_rating = mean(overall_impression, na.rm = T)) |> 
+  gt() |> 
+  cols_label(respondent_type = "Type of respondent",
+             average_rating = "Overall satisfaction") |> 
+  fmt_number(decimals = 1)
+  
+```
+
+The response scale for the logo goes from 1 (hated it) to 5 (loved it).
+
+```{r}
+responses |> 
+  summarize(logo_mean = mean(logo)) |> 
+  gt() |> 
+  cols_label(logo_mean = "Rating of graphics/logo") |> 
+  fmt_number(decimals = 1)
+```
+
+# Attendees
+
+The following questions were all for regular attendees of Bike Week.
+
+Most respondents had previously participated in Bike Week:
+```{r}
+responses |> 
+  filter(respondent_type == "Attendee") |> 
+  group_by(previous_participation) |> 
+  summarise(n = n()) |> 
+  mutate(perc = n/sum(n)) |> 
+  ggplot(aes(previous_participation, perc, fill = previous_participation, label = n)) +
+  geom_bar(position = "stack", stat = "identity") +
+  geom_text() + scale_y_continuous(labels = scales::percent) +
+  xlab("Did you participate in Madison Bike Week in previous years?") +
+  labs(title = "Newcomers vs repeat customers") +
+  theme_minimal() +
+  ylab(element_blank())
+```
+
+One of our goals of Bike Week is to increase awareness of Madison Bikes. So we asked whether respondents had heard of Madison Bikes before Bike Week. And all of them had.
+
+```{r}
+responses |> 
+  filter(respondent_type == "Attendee") |> 
+  group_by(awareness_mb) |> 
+  summarise(n = n()) |> 
+  mutate(perc = n/sum(n)) |> 
+  ggplot(aes(awareness_mb, perc, fill = awareness_mb, label = scales::percent(perc))) +
+  geom_bar(position = "stack", stat = "identity") + scale_y_continuous(labels = scales::percent) +
+  xlab("Before participating in Madison Bike Week, had you heard of Madison Bikes?") +
+  ylab(element_blank()) +
+  theme(legend.position = "none") +
+  labs(title = "Respondents knew about Madison Bikes before Bike Week") +
+  theme_minimal()
+```
+
+Most people attended between 1 and 5 events.
+
+```{r}
+responses |> 
+  filter(respondent_type == "Attendee") |> 
+  group_by(events_attended) |> 
+  summarise(n = n()) |> 
+  mutate(perc = n/sum(n)) |> 
+  ggplot(aes(events_attended, perc, fill = events_attended, label = n)) +
+  geom_bar(position = "stack", stat = "identity") +
+  geom_text() + scale_y_continuous(labels = scales::percent) +
+  xlab("How many events did you attend/discounts did you use?") +
+  labs(title = "Most people attended between 1 and 5 events") +
+  theme_minimal() +
+  ylab(element_blank())
+
+```
+
+When asked about their favorite event, there didn't seem to be a consensus:
+
+```{r}
+responses |> 
+  filter(!is.na(favorite_event)) |> 
+  select(favorite_event) |> 
+  gt() |> 
+  cols_label(favorite_event = "What was your favorite event?")
+```
+
+We also asked about the favorite Bike Week experience. Here's a word cloud of the responses.[^2] 
+
+
+
+[^2]: We also asked for permission to use these quotes to promote Bike Week. We can review this next year.
+
+```{r}
+responses |> 
+  filter(!is.na(favorite_experience)) |> 
+  select(favorite_experience) |> 
+  unnest_tokens(input = favorite_experience, output = word, token = "words") |> 
+  anti_join(stop_words) |> 
+  count(word, sort = T) |> 
+  wordcloud2::wordcloud2()
+```
+
+
+The full responses:
+
+```{r}
+responses |> 
+  filter(!is.na(favorite_experience)) |> 
+  pull(favorite_experience)
+```
+
+
+And when asked for suggestions for improvement, this is what we heard:
+
+```{r}
+responses |> 
+  filter(!is.na(improvement_suggestion)) |> 
+  select(improvement_suggestion) |> 
+  gt() |> 
+  cols_label(improvement_suggestion = "If there is one thing that could be improved...")
+```
+
+## Event organizers
+
+Events are organized by different entities and we asked which category organizers fell into:
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_type)) |> 
+  group_by(event_org_type) |> 
+  tally(sort = T) |> 
+  gt() |> 
+  cols_label(event_org_type = "I organized an event/provided a discount as ...")
+  
+```
+
+Over half of respondents had organized an event previously, but we also had newcomers:
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_previous)) |> 
+  group_by(event_org_previous) |> 
+  tally(sort = T) |> 
+  gt() |> 
+  cols_label(event_org_previous = "Did you previously organize a Bike Week event?")
+```
+
+The overall satisfaction of event organizers was extremely high (5 point scale):
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_satisfaction)) |> 
+  summarise(satisfaction = round(mean(event_org_satisfaction), 1)) |> 
+  gt()
+```
+
+We asked organizers to provide an estimate of attendance at their event. 
+```{r}
+responses |> 
+  filter(!is.na(event_org_attendance)) |> 
+  summarize(attendance_average = mean(event_org_attendance), 
+            attendance_min = min(event_org_attendance),
+            attendance_max = max(event_org_attendance),
+            attendance_total = sum(event_org_attendance)) |> 
+  gt() |> 
+  gt::tab_spanner(label = "Estimated attendance at event", columns = 1:4) |> 
+  cols_label(attendance_average = "mean", attendance_min = "minimum", attendance_max = "maximum",
+             attendance_total = "total for all respondents") |> 
+  fmt_integer()
+```
+
+## Satisfaction scores
+
+Organizers were asked to rate their satisfaction with several specific aspects of their experience. All scores were very high, with satisfaction with attendance being the exception.
+
+
+```{r}
+responses |> 
+  select(event_org_sign_up, event_org_pre_event_comms, event_org_promotion, event_org_media_coverage, event_org_attendance_satisfaction) |> 
+  rename_with(~str_remove(., "event_org_")) |> 
+  summarize(across(everything(), list(mean = ~ mean(.x,na.rm = T)))) |> 
+  gt() |> 
+  tab_spanner(label = "How satisfied were you with ...", columns = 1:5) |> 
+  cols_label(sign_up_mean = "Sign-up process and form",
+             pre_event_comms_mean = "Pre-event communications",
+             promotion_mean = "Promotion of Madison Bike Week by Madison Bikes",
+             media_coverage_mean = "Social/other media coverage of Madison Bike Week",
+             attendance_satisfaction_mean = "Attendance at your event") |> 
+  fmt_number(decimals = 1)
+```
+
+We asked what the favorite thing about an event organizer was:
+```{r}
+responses |> 
+  filter(!is.na(event_org_fave)) |> 
+  pull(event_org_fave)
+```
+
+And when asked for possible improvements, this is what we heard:
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_improve)) |> 
+  pull(event_org_improve)
+```
+
+No organizers ruled out doing an event again next year.
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_future)) |> 
+  group_by(event_org_future) |> 
+  tally() |> 
+  gt() |> 
+  cols_label(event_org_future = "Do you think you are going to organize an event for next year's Madison Bike Week?")
+```
+
+We received few applications for small grants this year. We asked whether people were aware of the program, and if they didn't apply, what the reasons were.
+
+## Small grants
+
+Awareness of the small grants wasn't universal:
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_grant_aware)) |> 
+  group_by(event_org_grant_aware) |> 
+  tally() |> 
+  gt() |> 
+  cols_label(event_org_grant_aware = "Were you aware of the small grants program for Madison Bike Week events?")
+```
+
+Reasons for not applying:
+
+```{r}
+responses |> 
+  filter(!is.na(event_org_grant_not_apply)) |> 
+  pull(event_org_grant_not_apply)
+```
+
